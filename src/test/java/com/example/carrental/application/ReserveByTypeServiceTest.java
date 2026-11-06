@@ -4,6 +4,8 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -27,19 +29,26 @@ class ReserveByTypeServiceTest {
     @Test
     void reservesAnAvailableCarForTheRequestedTypeAndPeriod() {
         Car car = new Car(2, CarType.SUV);
+        List<String> events = new ArrayList<>();
         AtomicReference<Period> searchedPeriod = new AtomicReference<>();
         AtomicReference<CarType> searchedType = new AtomicReference<>();
         AtomicReference<Period> savedPeriod = new AtomicReference<>();
         CarAvailabilityPort availability = (type, period) -> {
+            events.add("availability");
             searchedType.set(type);
             searchedPeriod.set(period);
             return Optional.of(car);
         };
         ReservationStorePort store = (savedCar, period) -> {
+            events.add("save");
             savedPeriod.set(period);
             return new Reservation(17, savedCar, period);
         };
-        ReserveByTypeService service = new ReserveByTypeService(availability, type -> {}, store, CLOCK);
+        ReserveByTypeService service = new ReserveByTypeService(
+                availability,
+                type -> events.add("lock"),
+                store,
+                CLOCK);
         OffsetDateTime start = OffsetDateTime.parse("2026-11-08T12:00:00+02:00");
 
         Reservation reservation = service.reserve(CarType.SUV, start, 3);
@@ -50,6 +59,7 @@ class ReserveByTypeServiceTest {
         assertThat(searchedPeriod.get().start()).isEqualTo(start);
         assertThat(searchedPeriod.get().end()).isEqualTo(start.plusHours(72));
         assertThat(savedPeriod.get()).isSameAs(searchedPeriod.get());
+        assertThat(events).containsExactly("lock", "availability", "save");
     }
 
     @Test
@@ -88,11 +98,25 @@ class ReserveByTypeServiceTest {
     }
 
     @Test
-    void reportsWhenNoCarIsAvailable() {
+    void rejectsPeriodsThatExceedTheDateTimeRange() {
         ReserveByTypeService service = new ReserveByTypeService(
                 (type, period) -> Optional.empty(),
                 type -> {},
                 (car, period) -> new Reservation(1, car, period),
+                CLOCK);
+
+        assertThatThrownBy(() -> service.reserve(CarType.SEDAN, OffsetDateTime.MAX, 1))
+                .isInstanceOf(InvalidReservationException.class);
+    }
+
+    @Test
+    void reportsWhenNoCarIsAvailable() {
+        ReserveByTypeService service = new ReserveByTypeService(
+                (type, period) -> Optional.empty(),
+                type -> {},
+                (car, period) -> {
+                    throw new AssertionError("The service must not save when no car is available");
+                },
                 CLOCK);
 
         assertThatThrownBy(() -> service.reserve(

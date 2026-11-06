@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id 'jacoco'
     id 'org.springframework.boot' version '4.1.2'
 }
 
@@ -30,6 +31,50 @@ dependencies {
     testImplementation 'org.testcontainers:testcontainers-junit-jupiter:2.0.5'
 }
 
+jacoco {
+    toolVersion = '0.8.16'
+}
+
 tasks.named('test', Test) {
     useJUnitPlatform()
+    exclude '**/*IntegrationTest.class'
+    exclude '**/DatabaseIntegrationTest.class'
+}
+
+tasks.register('integrationTest', Test) {
+    description = 'Runs the PostgreSQL integration tests.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    include '**/*IntegrationTest.class'
+    include '**/DatabaseIntegrationTest.class'
+    shouldRunAfter tasks.named('test')
+}
+
+tasks.named('jacocoTestReport') {
+    dependsOn tasks.named('test')
+    reports {
+        html.required = true
+        xml.required = true
+    }
+}
+
+tasks.named('jacocoTestCoverageVerification') {
+    dependsOn tasks.named('test')
+    violationRules {
+        rule {
+            limit {
+                counter = 'LINE'
+                value = 'COVEREDRATIO'
+                minimum = 0.80
+            }
+        }
+    }
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('integrationTest')
+    dependsOn tasks.named('jacocoTestReport')
+    dependsOn tasks.named('jacocoTestCoverageVerification')
 }

@@ -51,7 +51,7 @@ services:
 
   test:
     build: .
-    command: ["gradle", "--no-daemon", "--console=plain", "--project-cache-dir", "/tmp/car-rental-gradle-project", "test"]
+    command: ["gradle", "--no-daemon", "--console=plain", "--project-cache-dir", "/tmp/car-rental-gradle-project", "check"]
     profiles: ["test"]
     environment:
       DOCKER_HOST: unix:///var/run/docker.sock

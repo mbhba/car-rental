@@ -103,6 +103,9 @@ class ReservationEndpointIntegrationTest extends PostgresIntegrationTestSupport 
                 .toList();
         assertThat(statuses).filteredOn(status -> status == HttpStatus.CREATED.value()).hasSize(2);
         assertThat(statuses).filteredOn(status -> status == HttpStatus.CONFLICT.value()).hasSize(6);
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM reservation", Integer.class)).isEqualTo(2);
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT count(DISTINCT car_id) FROM reservation", Integer.class)).isEqualTo(2);
 
         Integer overlappingPairs = jdbcTemplate.queryForObject("""
                 SELECT count(*)

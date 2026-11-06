@@ -89,13 +89,13 @@ Scope: A transaction locks the type row with `SELECT ... FOR UPDATE`, checks ava
 
 Done when: Concurrent requests cannot save overlapping reservations. A constraint conflict rolls back the transaction and returns the required response.
 
-### 6. Add Unit Tests: Core
+### 6. Add Unit Tests: Core (Complete)
 
 Scope: Test period rules, validation, car selection, and no availability. Use an injected clock for time tests. Use JaCoCo to measure production code coverage from unit tests.
 
 Done when: Tests pass and coverage is at least 80%. The target is 90%.
 
-### 7. Add Integration Tests: Core
+### 7. Add Integration Tests: Core (Complete)
 
 Scope: Use Testcontainers and real PostgreSQL. Test saving, no availability, adjacent periods, and more concurrent requests than available cars. Use a separate direct SQL test for the database constraint.
 

@@ -2,12 +2,13 @@
 
 ## Technology versions
 
-As of November 6, 2026, the project versions remain current. I made no version changes.
+I checked the current stable versions on November 6, 2026. I added JaCoCo 0.8.16. Other project versions remain current.
 
 - Java 25 is the current LTS release. [Oracle Java roadmap](https://www.oracle.com/europe/java/technologies/java-se-support-roadmap.html)
 - Spring Boot 4.1.2 is the latest stable release. [Spring Boot releases](https://github.com/spring-projects/spring-boot/releases) and [system requirements](https://docs.spring.io/spring-boot/system-requirements.html)
 - Gradle 9.8.2 is the latest stable release. It supports running on Java 25. [Gradle releases](https://gradle.org/releases/) and [Java compatibility](https://docs.gradle.org/current/userguide/compatibility.html)
 - Testcontainers 2.0.5 is the selected test version. [Testcontainers releases](https://github.com/testcontainers/testcontainers-java/releases)
+- JaCoCo 0.8.16 is the latest stable release. It supports Java 25. [JaCoCo releases](https://www.jacoco.org/jacoco/)
 - PostgreSQL 18.6 is the latest stable release. PostgreSQL 19 is a release candidate. [PostgreSQL release notes](https://www.postgresql.org/docs/release/)
 - The Adminer site lists 6.3.0 as its latest release. The official Docker image still lists 6.2.0 tags, so Compose uses 6.2.0. [Adminer releases](https://www.adminer.org/en/) and [Adminer image tags](https://hub.docker.com/_/adminer)
 - The local host reports Docker Compose 5.6.0. The project uses PostgreSQL image 18.6 and Adminer image 6.2.0. [PostgreSQL image](https://hub.docker.com/_/postgres)
@@ -61,7 +62,13 @@ The command above keeps the database volume. The command `docker compose down -v
 
 ## Run the tests
 
-The test service runs the unit tests and the PostgreSQL integration tests. It starts a temporary PostgreSQL 18.6 container with Testcontainers 2.0.5. It loads the same initialization script and needs access to the Docker socket.
+The test service runs unit tests, PostgreSQL integration tests, and the JaCoCo coverage rule. It starts a temporary PostgreSQL 18.6 container with Testcontainers 2.0.5. It loads the same initialization script and needs access to the Docker socket.
+
+Gradle `test` runs unit tests. Gradle `integrationTest` runs tests against PostgreSQL. Gradle `check` runs both tasks and the JaCoCo coverage rule.
+
+JaCoCo measures production line coverage from unit tests. Line coverage is the share of production lines that tests run. The build fails when coverage is below 80%. The target is 90%.
+
+The HTML report is at `build/reports/jacoco/test/html/index.html`.
 
 From the project directory, run:
 
@@ -82,6 +89,8 @@ The database stores car types as rows. Each reservation transaction locks its ty
 The reservation table stores timestamps with time zones as instants. A PostgreSQL exclusion constraint rejects overlapping periods for one car. The constraint also protects writes that bypass the application. When it rejects a reservation, PostgreSQL rolls back the transaction and the API returns `409`.
 
 The test service alone mounts the Docker socket. Testcontainers uses that socket to start a real PostgreSQL database for tests. The local database credentials and Adminer service support manual testing only.
+
+JaCoCo measures production line coverage from unit tests. The `check` task runs the unit tests, the PostgreSQL integration tests, and the 80% coverage rule.
 
 ## Current scope
 
