@@ -5,9 +5,16 @@ import java.time.Clock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import com.example.carrental.adapter.persistence.TransactionalReserveByType;
-import com.example.carrental.application.ReserveByType;
-import com.example.carrental.application.ReserveByTypeService;
+import com.example.carrental.adapter.persistence.TransactionalCancelReservation;
+import com.example.carrental.adapter.persistence.TransactionalReserveCar;
+import com.example.carrental.application.CancelReservation;
+import com.example.carrental.application.CancelReservationService;
+import com.example.carrental.application.FindReservation;
+import com.example.carrental.application.FindReservationService;
+import com.example.carrental.application.ReserveCar;
+import com.example.carrental.application.ReserveCarService;
+import com.example.carrental.application.SearchAvailableCars;
+import com.example.carrental.application.SearchAvailableCarsService;
 import com.example.carrental.application.port.CarAvailabilityPort;
 import com.example.carrental.application.port.ReservationLockPort;
 import com.example.carrental.application.port.ReservationStorePort;
@@ -16,13 +23,31 @@ import com.example.carrental.application.port.ReservationStorePort;
 public class ApplicationConfiguration {
 
     @Bean
-    ReserveByType reserveByType(
+    ReserveCar reserveCar(
             CarAvailabilityPort carAvailability,
             ReservationLockPort reservationLock,
             ReservationStorePort reservationStore,
             Clock clock) {
-        ReserveByType useCase = new ReserveByTypeService(
+        ReserveCar useCase = new ReserveCarService(
                 carAvailability, reservationLock, reservationStore, clock);
-        return new TransactionalReserveByType(useCase);
+        return new TransactionalReserveCar(useCase);
+    }
+
+    @Bean
+    SearchAvailableCars searchAvailableCars(CarAvailabilityPort carAvailability, Clock clock) {
+        return new SearchAvailableCarsService(carAvailability, clock);
+    }
+
+    @Bean
+    FindReservation findReservation(ReservationStorePort reservationStore) {
+        return new FindReservationService(reservationStore);
+    }
+
+    @Bean
+    CancelReservation cancelReservation(
+            ReservationStorePort reservationStore,
+            ReservationLockPort reservationLock) {
+        return new TransactionalCancelReservation(
+                new CancelReservationService(reservationStore, reservationLock));
     }
 }

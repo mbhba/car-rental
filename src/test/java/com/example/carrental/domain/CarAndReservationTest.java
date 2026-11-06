@@ -50,4 +50,15 @@ class CarAndReservationTest {
         assertThatThrownBy(() -> new Reservation(1, car, null))
                 .isInstanceOf(NullPointerException.class);
     }
+
+    @Test
+    void restoresTheStoredCancellationStatus() {
+        Reservation reservation = new Reservation(
+                42,
+                new Car(1, CarType.SEDAN),
+                Period.forDays(OffsetDateTime.parse("2026-03-28T12:30:00Z"), 1),
+                ReservationStatus.CANCELLED);
+
+        assertThat(reservation.status()).isEqualTo(ReservationStatus.CANCELLED);
+    }
 }

@@ -22,6 +22,15 @@ class DatabaseIntegrationTest extends PostgresIntegrationTestSupport {
     @BeforeEach
     void clearsReservations() {
         jdbcTemplate.update("DELETE FROM reservation");
+        jdbcTemplate.execute("ALTER TABLE reservation DROP CONSTRAINT IF EXISTS reservation_no_overlapping_periods");
+        jdbcTemplate.execute("""
+                ALTER TABLE reservation
+                    ADD CONSTRAINT reservation_no_overlapping_periods
+                    EXCLUDE USING GIST (
+                        car_id WITH =,
+                        tstzrange(starts_at, ends_at, '[)') WITH &&
+                    ) WHERE (status = 'ACTIVE')
+                """);
     }
 
     @Test
@@ -73,6 +82,22 @@ class DatabaseIntegrationTest extends PostgresIntegrationTestSupport {
     }
 
     @Test
+    void allowsAReservationToReuseACancelledPeriod() {
+        jdbcTemplate.update("""
+                INSERT INTO reservation (car_id, starts_at, ends_at)
+                VALUES (1, '2026-11-10T10:00:00Z', '2026-11-12T10:00:00Z')
+                """);
+        jdbcTemplate.update("UPDATE reservation SET status = 'CANCELLED' WHERE car_id = 1");
+
+        jdbcTemplate.update("""
+                INSERT INTO reservation (car_id, starts_at, ends_at)
+                VALUES (1, '2026-11-11T10:00:00Z', '2026-11-13T10:00:00Z')
+                """);
+
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM reservation", Integer.class)).isEqualTo(2);
+    }
+
+    @Test
     void migrationAddsTheOverlapConstraintAndCanRunAgain() throws IOException {
         jdbcTemplate.execute("ALTER TABLE reservation DROP CONSTRAINT reservation_no_overlapping_periods");
         String migrationSql = new ClassPathResource("db/init/002-protect-overlapping-periods.sql")
@@ -92,5 +117,39 @@ class DatabaseIntegrationTest extends PostgresIntegrationTestSupport {
                   AND conname = 'reservation_no_overlapping_periods'
                 """, Integer.class);
         assertThat(constraintCount).isEqualTo(1);
+    }
+
+    @Test
+    void migrationChangesTheOverlapConstraintToActiveReservationsOnly() throws IOException {
+        jdbcTemplate.execute("ALTER TABLE reservation DROP CONSTRAINT reservation_no_overlapping_periods");
+        jdbcTemplate.execute("""
+                ALTER TABLE reservation
+                    ADD CONSTRAINT reservation_no_overlapping_periods
+                    EXCLUDE USING GIST (
+                        car_id WITH =,
+                        tstzrange(starts_at, ends_at, '[)') WITH &&
+                    )
+                """);
+        String migration = new ClassPathResource("db/init/003-active-reservations-only.sql")
+                .getContentAsString(StandardCharsets.UTF_8)
+                .replaceAll("(?m)^--.*\\R", "");
+        for (String statement : migration.split(";")) {
+            if (!statement.isBlank() && !statement.stripLeading().startsWith("--")) {
+                jdbcTemplate.execute(statement);
+            }
+        }
+        for (String statement : migration.split(";")) {
+            if (!statement.isBlank() && !statement.stripLeading().startsWith("--")) {
+                jdbcTemplate.execute(statement);
+            }
+        }
+
+        String definition = jdbcTemplate.queryForObject("""
+                SELECT pg_get_constraintdef(oid)
+                FROM pg_constraint
+                WHERE conrelid = 'reservation'::regclass
+                  AND conname = 'reservation_no_overlapping_periods'
+                """, String.class);
+        assertThat(definition).contains("WHERE", "'ACTIVE'");
     }
 }

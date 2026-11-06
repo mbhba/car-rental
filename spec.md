@@ -101,31 +101,31 @@ Scope: Use Testcontainers and real PostgreSQL. Test saving, no availability, adj
 
 Done when: Tests pass. The number of successful reservations matches the available fleet. The database has no overlapping reservations for one car.
 
-### 8. Document the Solution: Core
+### 8. Document the Solution: Core (Complete)
 
 Scope: Add a sample request, test instructions, design decisions, and known limits to the README. Explain how the type lock works across application instances and how it affects parallel requests.
 
 Done when: A reader can run and test the solution and can explain its trade-offs and omitted features.
 
-### 9. Search Availability: Nice to Have
+### 9. Search Availability: Nice to Have (Complete)
 
 Scope: Add `GET /cars/available` with a period and an optional car type. The read does not hold a car. The reservation request checks availability again before saving.
 
 Done when: The endpoint returns the correct list for a period and type. Tests cover an empty result and a change in availability before the reservation.
 
-### 10. Reserve by ID: Nice to Have
+### 10. Reserve by ID: Nice to Have (Complete)
 
 Scope: Extend `POST /reservations` to accept exactly one of car type or car ID. An unknown ID returns `404`. A busy car returns `409`.
 
 Done when: Validation and responses match the specification. A concurrent reservation test for the same ID prevents overlapping periods.
 
-### 11. Read and Cancel Reservations: Nice to Have
+### 11. Read and Cancel Reservations: Nice to Have (Complete)
 
 Scope: Add `GET /reservations/{id}`, `POST /reservations/{id}/cancel`, and the `ACTIVE` and `CANCELLED` statuses. A repeat cancellation returns the current state. Cancellation uses the same lock order. The database constraint covers active reservations.
 
 Done when: Reads and cancellations return the specified responses. Repeated cancellation is safe. A cancelled reservation no longer holds its period.
 
-### 12. Extend the Tests: Nice to Have
+### 12. Extend the Tests: Nice to Have (Complete)
 
 Scope: Test new operations, changes in availability between read and save, and more boundary cases.
 

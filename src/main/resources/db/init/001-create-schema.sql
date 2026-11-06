@@ -41,10 +41,10 @@ CREATE TABLE reservation (
     CONSTRAINT reservation_period_valid CHECK (ends_at > starts_at),
     CONSTRAINT reservation_status_valid
         CHECK (status IN ('ACTIVE', 'CANCELLED')),
-    -- Keep the database safeguard even for writes that bypass the type-row lock.
+    -- Protect writes that bypass the type lock and ignore cancelled periods.
     CONSTRAINT reservation_no_overlapping_periods
         EXCLUDE USING GIST (
             car_id WITH =,
             tstzrange(starts_at, ends_at, '[)') WITH &&
-        )
+        ) WHERE (status = 'ACTIVE')
 );

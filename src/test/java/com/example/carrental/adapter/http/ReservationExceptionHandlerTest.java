@@ -5,10 +5,13 @@ import java.time.DateTimeException;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.HttpStatus;
+import org.springframework.transaction.TransactionSystemException;
 
 import com.example.carrental.application.InvalidReservationException;
 import com.example.carrental.application.NoAvailableCarException;
+import com.example.carrental.application.CarNotFoundException;
 import com.example.carrental.application.ReservationConflictException;
+import com.example.carrental.application.ReservationNotFoundException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -39,10 +42,19 @@ class ReservationExceptionHandlerTest {
     }
 
     @Test
+    void mapsUnknownCarsAndReservationsToNotFound() {
+        assertThat(handler.notFound(new CarNotFoundException(999)).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(handler.notFound(new ReservationNotFoundException(999)).getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
     void hidesDetailsFromUnexpectedDatabaseErrors() {
         var response = handler.databaseError(new DataAccessResourceFailureException("private database detail"));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-        assertThat(response.getBody().message()).isEqualTo("The reservation could not be saved");
+        assertThat(response.getBody().message()).isEqualTo("The database request failed");
+        assertThat(handler.databaseError(new TransactionSystemException("private commit detail"))
+                .getBody().message()).isEqualTo("The database request failed");
     }
 }
