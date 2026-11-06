@@ -26,7 +26,9 @@ INSERT INTO car (type_code) VALUES
     ('VAN'),
     ('VAN');
 
--- Phase 5 adds the overlap constraint after the reservation flow uses type locks.
+-- btree_gist lets the exclusion constraint compare car IDs and time ranges in one GiST index.
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
 CREATE TABLE reservation (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     car_id BIGINT NOT NULL,
@@ -38,5 +40,11 @@ CREATE TABLE reservation (
         FOREIGN KEY (car_id) REFERENCES car (id),
     CONSTRAINT reservation_period_valid CHECK (ends_at > starts_at),
     CONSTRAINT reservation_status_valid
-        CHECK (status IN ('ACTIVE', 'CANCELLED'))
+        CHECK (status IN ('ACTIVE', 'CANCELLED')),
+    -- Keep the database safeguard even for writes that bypass the type-row lock.
+    CONSTRAINT reservation_no_overlapping_periods
+        EXCLUDE USING GIST (
+            car_id WITH =,
+            tstzrange(starts_at, ends_at, '[)') WITH &&
+        )
 );

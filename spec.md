@@ -83,7 +83,7 @@ Scope: Add `POST /reservations`. It accepts a car type, a date and time with a t
 
 Done when: The endpoint saves valid requests and returns the required responses for valid requests and described errors.
 
-### 5. Protect Concurrent Reservations: Core
+### 5. Protect Concurrent Reservations: Core (Complete)
 
 Scope: A transaction locks the type row with `SELECT ... FOR UPDATE`, checks availability, and saves the reservation. An `EXCLUDE` constraint with `btree_gist` rejects overlapping periods for one car. A constraint conflict returns `409` after the transaction rolls back.
 

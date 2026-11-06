@@ -39,7 +39,7 @@ class ReserveByTypeServiceTest {
             savedPeriod.set(period);
             return new Reservation(17, savedCar, period);
         };
-        ReserveByTypeService service = new ReserveByTypeService(availability, store, CLOCK);
+        ReserveByTypeService service = new ReserveByTypeService(availability, type -> {}, store, CLOCK);
         OffsetDateTime start = OffsetDateTime.parse("2026-11-08T12:00:00+02:00");
 
         Reservation reservation = service.reserve(CarType.SUV, start, 3);
@@ -60,7 +60,7 @@ class ReserveByTypeServiceTest {
             return Optional.of(new Car(1, type));
         };
         ReservationStorePort store = (car, period) -> new Reservation(1, car, period);
-        ReserveByTypeService service = new ReserveByTypeService(availability, store, CLOCK);
+        ReserveByTypeService service = new ReserveByTypeService(availability, type -> {}, store, CLOCK);
 
         assertThatThrownBy(() -> service.reserve(
                 CarType.SEDAN, OffsetDateTime.parse("2026-11-06T09:59:59Z"), 1))
@@ -72,6 +72,7 @@ class ReserveByTypeServiceTest {
     void rejectsMissingAndInvalidReservationValues() {
         ReserveByTypeService service = new ReserveByTypeService(
                 (type, period) -> Optional.empty(),
+                type -> {},
                 (car, period) -> new Reservation(1, car, period),
                 CLOCK);
         OffsetDateTime future = OffsetDateTime.parse("2026-11-08T10:00:00Z");
@@ -90,6 +91,7 @@ class ReserveByTypeServiceTest {
     void reportsWhenNoCarIsAvailable() {
         ReserveByTypeService service = new ReserveByTypeService(
                 (type, period) -> Optional.empty(),
+                type -> {},
                 (car, period) -> new Reservation(1, car, period),
                 CLOCK);
 

@@ -22,9 +22,19 @@ From the project directory, start the application, PostgreSQL, and Adminer:
 docker compose up --build -d --wait
 ```
 
-The first start downloads the required images and Java dependencies. PostgreSQL runs the initialization script when the named volume is empty. The script creates the tables and adds two cars of each type.
+The first start downloads the required images and Java dependencies. PostgreSQL runs the SQL scripts when the named volume is empty. The scripts create the tables and add two cars of each type.
 
-The application starts after PostgreSQL reports that it is ready. The named volume keeps database data after you stop the services. The initialization script does not run again while the volume contains a database.
+The application starts after PostgreSQL reports that it is ready. The named volume keeps database data after you stop the services. The initialization scripts do not run again while the volume contains a database.
+
+If the database service is stopped, run `docker compose up -d db` from the project directory.
+
+If your database volume predates Phase 5, run this migration from the project directory:
+
+```sh
+docker compose exec -T db psql -U car_rental -d car_rental < src/main/resources/db/init/002-protect-overlapping-periods.sql
+```
+
+The migration stops if old reservations overlap. Resolve those rows before you run the migration again.
 
 ## Try the application
 
@@ -67,7 +77,9 @@ Docker Compose starts the three local services on one network. The application w
 
 The project uses the Groovy DSL in `build.gradle`. The application uses a Gradle image for local development. Compose mounts the source directory and keeps the Gradle cache in a named volume. This lets you edit Java files without rebuilding the image.
 
-The database stores car types as rows. Phase 5 will lock one type row while the application selects a car and saves a reservation. The reservation table stores timestamps with time zones as instants. The overlap constraint is deferred to Phase 5, when the reservation flow uses the type lock.
+The database stores car types as rows. Each reservation transaction locks its type row before it selects a car and saves the reservation. This row lock makes requests for the same type wait across application instances. It keeps selection simple, but it limits parallel reservations for that type. Requests for different types can proceed at the same time.
+
+The reservation table stores timestamps with time zones as instants. A PostgreSQL exclusion constraint rejects overlapping periods for one car. The constraint also protects writes that bypass the application. When it rejects a reservation, PostgreSQL rolls back the transaction and the API returns `409`.
 
 The test service alone mounts the Docker socket. Testcontainers uses that socket to start a real PostgreSQL database for tests. The local database credentials and Adminer service support manual testing only.
 
@@ -81,6 +93,6 @@ Cars and reservations require positive numeric IDs. The database enforces positi
 
 `POST /reservations` accepts `carType`, `start` with a UTC offset, and a positive `days` value. A day is exactly 24 hours. The application assigns the first available car of that type and returns its reservation details with status `201`.
 
-The API returns `400` for missing or invalid values and past start times. It returns `409` when no car is available. Two requests can select the same car before either request saves. Phase 5 adds a type-row lock and a database constraint to prevent that result.
+The API returns `400` for missing or invalid values and past start times. It returns `409` when no car is available or when PostgreSQL rejects an overlapping period.
 
-The solution does not yet add the type lock, overlap constraint, or JaCoCo reports. Later core tasks add these features in the order in `spec.md`.
+The API does not yet search cars, reserve by car ID, read reservations, or cancel reservations. The specification defers these operations as nice-to-have tasks. The database constraint covers all reservations. A later cancellation task will change it to cover active reservations only.

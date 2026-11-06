@@ -20,6 +20,7 @@ public class ReservationController {
         this.reserveByType = reserveByType;
     }
 
+    // Other API operations remain outside the core scope and are listed as nice-to-have tasks.
     @PostMapping
     public ResponseEntity<ReservationResponse> create(@RequestBody CreateReservationRequest request) {
         if (request == null) {

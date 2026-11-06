@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.example.carrental.application.InvalidReservationException;
 import com.example.carrental.application.NoAvailableCarException;
+import com.example.carrental.application.ReservationConflictException;
 
 @RestControllerAdvice
 public class ReservationExceptionHandler {
@@ -22,6 +23,11 @@ public class ReservationExceptionHandler {
 
     @ExceptionHandler(NoAvailableCarException.class)
     public ResponseEntity<ApiError> noAvailability(NoAvailableCarException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiError(exception.getMessage()));
+    }
+
+    @ExceptionHandler(ReservationConflictException.class)
+    public ResponseEntity<ApiError> reservationConflict(ReservationConflictException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiError(exception.getMessage()));
     }
 

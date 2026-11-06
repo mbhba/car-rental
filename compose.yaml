@@ -37,7 +37,7 @@ services:
       - "127.0.0.1:5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql
-      - ./src/main/resources/db/init/001-create-schema.sql:/docker-entrypoint-initdb.d/001-create-schema.sql:ro
+      - ./src/main/resources/db/init:/docker-entrypoint-initdb.d:ro
 
   adminer:
     image: adminer:6.2.0-standalone
