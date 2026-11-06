@@ -3,10 +3,7 @@ package com.example.carrental;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-/**
- * Starts the HTTP and database infrastructure.
- * The domain model exists, but reservation APIs and persistence come in later tasks.
- */
+/** Starts the HTTP and database infrastructure. */
 @SpringBootApplication
 public class CarRentalApplication {
 

@@ -77,7 +77,7 @@ Scope: Add an SQL script that creates the schema, constraints, and two cars of e
 
 Done when: A new database has the required schema and fleet. Data remains after service restart.
 
-### 4. Reserve by Type: Core
+### 4. Reserve by Type: Core (Complete)
 
 Scope: Add `POST /reservations`. It accepts a car type, a date and time with a time zone offset, and a number of days. Success returns `201` and reservation details. Invalid data and past dates return `400`. No availability returns `409`.
 

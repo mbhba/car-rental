@@ -2,7 +2,7 @@
 
 ## Technology versions
 
-As of November 6, 2026, the current stable versions match the project versions. I made no version changes.
+As of November 6, 2026, the project versions remain current. I made no version changes.
 
 - Java 25 is the current LTS release. [Oracle Java roadmap](https://www.oracle.com/europe/java/technologies/java-se-support-roadmap.html)
 - Spring Boot 4.1.2 is the latest stable release. [Spring Boot releases](https://github.com/spring-projects/spring-boot/releases) and [system requirements](https://docs.spring.io/spring-boot/system-requirements.html)
@@ -67,16 +67,20 @@ Docker Compose starts the three local services on one network. The application w
 
 The project uses the Groovy DSL in `build.gradle`. The application uses a Gradle image for local development. Compose mounts the source directory and keeps the Gradle cache in a named volume. This lets you edit Java files without rebuilding the image.
 
-The database stores car types as rows. A later task can lock one type row while it selects a car and saves a reservation. The reservation table stores timestamps with time zones as instants. The overlap constraint is deferred to Phase 5, when the reservation flow uses the type lock.
+The database stores car types as rows. Phase 5 will lock one type row while the application selects a car and saves a reservation. The reservation table stores timestamps with time zones as instants. The overlap constraint is deferred to Phase 5, when the reservation flow uses the type lock.
 
 The test service alone mounts the Docker socket. Testcontainers uses that socket to start a real PostgreSQL database for tests. The local database credentials and Adminer service support manual testing only.
 
 ## Current scope
 
-Phase 2 adds a domain model for car types, cars, periods, and reservations. The domain code does not depend on Spring or SQL. Phase 3 adds the PostgreSQL schema and a six-car sample fleet.
+Phase 2 adds a domain model for car types, cars, periods, and reservations. The domain code does not depend on Spring or SQL. Phase 3 adds the PostgreSQL schema and a six-car sample fleet. Phase 4 adds reservation creation by car type.
 
 The period includes its start and excludes its end. A day-based period uses 24-hour days. The model compares dates by their instant, so different UTC offsets describe the same point in time.
 
 Cars and reservations require positive numeric IDs. The database enforces positive unique IDs. A reservation starts as active, and its domain object can move to the cancelled state.
 
-The working solution does not yet add reservation endpoints, the overlap constraint, or JaCoCo reports. Later core tasks add these features in the order in `spec.md`.
+`POST /reservations` accepts `carType`, `start` with a UTC offset, and a positive `days` value. A day is exactly 24 hours. The application assigns the first available car of that type and returns its reservation details with status `201`.
+
+The API returns `400` for missing or invalid values and past start times. It returns `409` when no car is available. Two requests can select the same car before either request saves. Phase 5 adds a type-row lock and a database constraint to prevent that result.
+
+The solution does not yet add the type lock, overlap constraint, or JaCoCo reports. Later core tasks add these features in the order in `spec.md`.
