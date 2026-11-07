@@ -59,7 +59,9 @@ This command keeps the database volume. The command `docker compose down -v` del
 
 The API uses JSON for reservation requests and responses. A period includes its start and excludes its end. Each day equals exactly 24 hours. A UTC offset shows the difference from UTC.
 
-The `start` value uses an ISO 8601 date and time with a UTC offset. The value must not be in the past. The `days` value must be a positive integer.
+The `start` value uses an ISO 8601 date and time with a UTC offset. It cannot be in the past. It can be no more than 365 days ahead. Exactly 365 days ahead is allowed.
+
+The request can cover 1 to 365 days. These limits apply to searches and reservations. The API rejects requests outside these limits before database access.
 
 Use a future start value when you send the examples below.
 
@@ -82,7 +84,7 @@ The response uses HTTP status `200`. Each item contains a `carId` and a `carType
 
 The API returns an empty array when no car matches. A search reports availability at the time of the read. It does not hold a car. A reservation request makes sure that a car remains free before it saves.
 
-The API returns `400` for missing or invalid values, unknown car types, and past start times.
+The API returns `400` for missing or invalid values, unknown car types, and past start times. It also returns `400` for starts more than 365 days ahead or periods longer than 365 days.
 
 ### Create a reservation
 
@@ -121,7 +123,7 @@ The API returns HTTP status `201` and the saved reservation:
 }
 ```
 
-The API returns `400` when both car fields appear, when neither field appears, or when a value is invalid. It returns `404` when `carId` does not exist. It returns `409` when the requested car or type has no available car. It returns `500` for an unexpected database error. Error responses contain a `message` field and do not expose database details.
+The API returns `400` when both car fields appear, when neither field appears, or when a value is invalid. It also returns `400` when the period exceeds 365 days or the start is more than 365 days ahead. It returns `404` when `carId` does not exist. It returns `409` when the requested car or type has no available car. It returns `500` for an unexpected database error. Error responses contain a `message` field and do not expose database details.
 
 ### Read a reservation
 

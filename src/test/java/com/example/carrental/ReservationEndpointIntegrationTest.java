@@ -56,14 +56,31 @@ class ReservationEndpointIntegrationTest extends PostgresIntegrationTestSupport 
     void returnsBadRequestForInvalidAndPastRequests() throws Exception {
         OffsetDateTime future = OffsetDateTime.now(ZoneOffset.UTC).plusDays(3).withNano(0);
         OffsetDateTime past = OffsetDateTime.now(ZoneOffset.UTC).minusDays(1).withNano(0);
+        OffsetDateTime tooFarAhead = OffsetDateTime.now(ZoneOffset.UTC).plusDays(366).withNano(0);
 
         assertThat(createReservation("SEDAN", future, 0).statusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(createReservation("SEDAN", future, 366).statusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST.value());
         assertThat(createReservation("SEDAN", past, 1).statusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(createReservation("SEDAN", tooFarAhead, 1).statusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST.value());
         assertThat(postReservation("{\"carType\":\"UNKNOWN\",\"start\":\""
                 + future + "\",\"days\":1}").statusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM reservation", Integer.class)).isZero();
+    }
+
+    @Test
+    void acceptsTheMaximumRentalLengthAndBookingHorizon() throws Exception {
+        OffsetDateTime start = OffsetDateTime.now(ZoneOffset.UTC).plusDays(365).minusSeconds(10).withNano(0);
+
+        HttpResponse<String> response = createReservation("SEDAN", start, 365);
+
+        assertThat(response.statusCode()).isEqualTo(HttpStatus.CREATED.value());
+        assertThat(response.body()).contains("\"status\":\"ACTIVE\"");
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM reservation", Integer.class)).isEqualTo(1);
     }
 
     @Test

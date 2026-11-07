@@ -1,6 +1,7 @@
 package com.example.carrental.application;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -19,6 +20,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class SearchAvailableCarsServiceTest {
@@ -64,5 +66,21 @@ class SearchAvailableCarsServiceTest {
         assertThatThrownBy(() -> service.search(
                 OffsetDateTime.parse("2026-11-06T09:00:00Z"), 1))
                 .isInstanceOf(InvalidReservationException.class);
+    }
+
+    @Test
+    void rejectsPeriodsOutsideTheSupportedLimitsBeforeSearching() {
+        CarAvailabilityPort availability = mock(CarAvailabilityPort.class);
+        SearchAvailableCarsService service = new SearchAvailableCarsService(availability, CLOCK);
+        OffsetDateTime tooFarAhead = OffsetDateTime.ofInstant(
+                CLOCK.instant().plus(Duration.ofDays(365)).plusSeconds(1), ZoneOffset.UTC);
+
+        assertThatThrownBy(() -> service.search(START, 366))
+                .isInstanceOf(InvalidReservationException.class);
+        assertThatThrownBy(() -> service.search(tooFarAhead, 1))
+                .isInstanceOf(InvalidReservationException.class);
+        assertThatThrownBy(() -> service.search(CarType.SEDAN, START, 366))
+                .isInstanceOf(InvalidReservationException.class);
+        verifyNoInteractions(availability);
     }
 }

@@ -81,9 +81,15 @@ class FullReservationApiIntegrationTest extends PostgresIntegrationTestSupport {
     @Test
     void returnsBadRequestForInvalidSearchAndReservationInputs() throws Exception {
         OffsetDateTime start = futureStart(12);
+        OffsetDateTime tooFarAhead = futureStart(366);
         String encodedStart = URLEncoder.encode(start.toString(), StandardCharsets.UTF_8);
+        String encodedTooFarAhead = URLEncoder.encode(tooFarAhead.toString(), StandardCharsets.UTF_8);
         assertThat(get("/cars/available").statusCode()).isEqualTo(HttpStatus.BAD_REQUEST.value());
         assertThat(get("/cars/available?start=" + encodedStart + "&days=1&carType=UNKNOWN").statusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(get("/cars/available?start=" + encodedStart + "&days=366").statusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(get("/cars/available?start=" + encodedTooFarAhead + "&days=1").statusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST.value());
         assertThat(post("/reservations", reservationJson("\"carType\":\"SUV\",\"carId\":3", start, 1))
                 .statusCode()).isEqualTo(HttpStatus.BAD_REQUEST.value());

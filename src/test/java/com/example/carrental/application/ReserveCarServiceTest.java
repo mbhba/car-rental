@@ -1,6 +1,7 @@
 package com.example.carrental.application;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -25,6 +26,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class ReserveCarServiceTest {
@@ -118,6 +120,11 @@ class ReserveCarServiceTest {
                 .isInstanceOf(InvalidReservationException.class);
         assertThatThrownBy(() -> service.reserve(CarType.SEDAN, null, FUTURE, 0))
                 .isInstanceOf(InvalidReservationException.class);
+        assertThatThrownBy(() -> service.reserve(CarType.SEDAN, null, FUTURE, 366))
+                .isInstanceOf(InvalidReservationException.class);
+        assertThatThrownBy(() -> service.reserve(CarType.SEDAN, null,
+                OffsetDateTime.ofInstant(NOW.plus(Duration.ofDays(365)).plusSeconds(1), ZoneOffset.UTC), 1))
+                .isInstanceOf(InvalidReservationException.class);
         assertThatThrownBy(() -> service.reserve(CarType.SEDAN, null,
                 OffsetDateTime.parse("2026-11-06T09:59:59Z"), 1))
                 .isInstanceOf(InvalidReservationException.class);
@@ -125,7 +132,7 @@ class ReserveCarServiceTest {
                 .isInstanceOf(InvalidReservationException.class);
         assertThatThrownBy(() -> service.reserve(CarType.SEDAN, null, OffsetDateTime.MAX, 1))
                 .isInstanceOf(InvalidReservationException.class);
-        verify(lock, never()).lockCarType(org.mockito.ArgumentMatchers.any());
+        verifyNoInteractions(availability, lock, store);
     }
 
     @Test

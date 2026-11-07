@@ -16,6 +16,8 @@ The model has car types `SEDAN`, `SUV`, and `VAN`, cars with unique IDs, and res
 
 The start date and time include a time zone offset. One day is exactly 24 hours. A period includes its start and excludes its end. A new reservation can start when the previous one ends.
 
+A request period must be from 1 to 365 days. Its start must be no more than 365 days after the current time. A start exactly 365 days ahead is allowed.
+
 The target API provides these operations:
 
 - `GET /cars/available` accepts a start date and time, a number of days, and an optional car type. It returns available car IDs and types. An empty list means that no car is available.
