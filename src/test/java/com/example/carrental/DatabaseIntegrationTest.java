@@ -2,14 +2,19 @@ package com.example.carrental;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.List;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.init.ScriptUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -31,6 +36,12 @@ class DatabaseIntegrationTest extends PostgresIntegrationTestSupport {
                         tstzrange(starts_at, ends_at, '[)') WITH &&
                     ) WHERE (status = 'ACTIVE')
                 """);
+    }
+
+    @AfterEach
+    void removesMigrationFailureTrigger() {
+        jdbcTemplate.execute("DROP EVENT TRIGGER IF EXISTS fail_active_constraint_migration");
+        jdbcTemplate.execute("DROP FUNCTION IF EXISTS fail_active_constraint_migration()");
     }
 
     @Test
@@ -151,5 +162,55 @@ class DatabaseIntegrationTest extends PostgresIntegrationTestSupport {
                   AND conname = 'reservation_no_overlapping_periods'
                 """, String.class);
         assertThat(definition).contains("WHERE", "'ACTIVE'");
+    }
+
+    @Test
+    void rollsBackConstraintReplacementWhenAddingTheNewConstraintFails() throws IOException {
+        jdbcTemplate.execute("ALTER TABLE reservation DROP CONSTRAINT reservation_no_overlapping_periods");
+        jdbcTemplate.execute("""
+                ALTER TABLE reservation
+                    ADD CONSTRAINT reservation_no_overlapping_periods
+                    EXCLUDE USING GIST (
+                        car_id WITH =,
+                        tstzrange(starts_at, ends_at, '[)') WITH &&
+                    )
+                """);
+        jdbcTemplate.execute("""
+                CREATE FUNCTION fail_active_constraint_migration() RETURNS event_trigger AS $$
+                BEGIN
+                    IF current_query() ILIKE '%ADD CONSTRAINT reservation_no_overlapping_periods%' THEN
+                        RAISE EXCEPTION 'forced constraint migration failure';
+                    END IF;
+                END;
+                $$ LANGUAGE plpgsql
+                """);
+        jdbcTemplate.execute("""
+                CREATE EVENT TRIGGER fail_active_constraint_migration
+                ON ddl_command_start
+                EXECUTE FUNCTION fail_active_constraint_migration()
+                """);
+        var migration = new ClassPathResource("db/init/003-active-reservations-only.sql");
+
+        assertThatThrownBy(() -> jdbcTemplate.execute((ConnectionCallback<Void>) connection -> {
+            try {
+                ScriptUtils.executeSqlScript(connection, migration);
+            } catch (RuntimeException exception) {
+                try (Statement statement = connection.createStatement()) {
+                    statement.execute("ROLLBACK");
+                } catch (SQLException rollbackFailure) {
+                    exception.addSuppressed(rollbackFailure);
+                }
+                throw exception;
+            }
+            return null;
+        })).isInstanceOf(RuntimeException.class);
+
+        String definition = jdbcTemplate.queryForObject("""
+                SELECT pg_get_constraintdef(oid)
+                FROM pg_constraint
+                WHERE conrelid = 'reservation'::regclass
+                  AND conname = 'reservation_no_overlapping_periods'
+                """, String.class);
+        assertThat(definition).doesNotContain("WHERE");
     }
 }

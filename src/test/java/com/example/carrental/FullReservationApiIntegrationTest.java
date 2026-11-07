@@ -95,6 +95,11 @@ class FullReservationApiIntegrationTest extends PostgresIntegrationTestSupport {
                 .statusCode()).isEqualTo(HttpStatus.BAD_REQUEST.value());
         assertThat(post("/reservations", reservationJson("\"carId\":0", start, 1))
                 .statusCode()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(post("/reservations", reservationJson("\"carId\":1.9", start, 1))
+                .statusCode()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(post("/reservations", reservationJson("\"carType\":\"SUV\"", start, "1.9"))
+                .statusCode()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM reservation", Integer.class)).isZero();
     }
 
     @Test
@@ -158,6 +163,10 @@ class FullReservationApiIntegrationTest extends PostgresIntegrationTestSupport {
     }
 
     private String reservationJson(String vehicle, OffsetDateTime start, int days) {
+        return reservationJson(vehicle, start, Integer.toString(days));
+    }
+
+    private String reservationJson(String vehicle, OffsetDateTime start, String days) {
         return "{" + vehicle + ",\"start\":\"" + start + "\",\"days\":" + days + "}";
     }
 

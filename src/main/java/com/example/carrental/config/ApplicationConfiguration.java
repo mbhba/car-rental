@@ -2,8 +2,11 @@ package com.example.carrental.config;
 
 import java.time.Clock;
 
+import org.springframework.boot.jackson.autoconfigure.JsonMapperBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import tools.jackson.databind.DeserializationFeature;
 
 import com.example.carrental.adapter.persistence.TransactionalCancelReservation;
 import com.example.carrental.adapter.persistence.TransactionalReserveCar;
@@ -21,6 +24,11 @@ import com.example.carrental.application.port.ReservationStorePort;
 
 @Configuration
 public class ApplicationConfiguration {
+
+    @Bean
+    JsonMapperBuilderCustomizer rejectFractionalIntegerValues() {
+        return builder -> builder.configure(DeserializationFeature.ACCEPT_FLOAT_AS_INT, false);
+    }
 
     @Bean
     ReserveCar reserveCar(
